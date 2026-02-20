@@ -1,0 +1,73 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model Site {
+  id                   String   @id @default(uuid()) @db.Uuid
+  name                 String
+  location             String?
+  emissionLimit        Decimal  @map("emission_limit") @db.Decimal(15, 4)
+  totalEmissionsToDate Decimal  @default(0) @map("total_emissions_to_date") @db.Decimal(15, 4)
+  metadata             Json?
+  createdAt            DateTime @default(now()) @map("created_at")
+  updatedAt            DateTime @updatedAt @map("updated_at")
+
+  measurements  Measurement[]
+  ingestBatches IngestBatch[]
+
+  @@map("sites")
+}
+
+model Measurement {
+  id         String   @id @default(uuid()) @db.Uuid
+  siteId     String   @map("site_id") @db.Uuid
+  batchId    String   @map("batch_id") @db.Uuid
+  value      Decimal  @db.Decimal(15, 4)
+  unit       String   @default("kg")
+  recordedAt DateTime @map("recorded_at")
+  createdAt  DateTime @default(now()) @map("created_at")
+
+  site  Site        @relation(fields: [siteId], references: [id], onDelete: Cascade)
+  batch IngestBatch @relation(fields: [batchId], references: [id], onDelete: Cascade)
+
+  @@index([siteId, recordedAt])
+  @@map("measurements")
+}
+
+/// Tracks each ingestion request for idempotency.
+/// The unique idempotencyKey prevents double-processing of retried requests.
+model IngestBatch {
+  id             String   @id @default(uuid()) @db.Uuid
+  siteId         String   @map("site_id") @db.Uuid
+  idempotencyKey String   @unique @map("idempotency_key")
+  recordCount    Int      @map("record_count")
+  totalValue     Decimal  @map("total_value") @db.Decimal(15, 4)
+  createdAt      DateTime @default(now()) @map("created_at")
+
+  site         Site          @relation(fields: [siteId], references: [id], onDelete: Cascade)
+  measurements Measurement[]
+
+  @@index([siteId])
+  @@map("ingest_batches")
+}
+
+/// Transactional outbox for guaranteed downstream notifications.
+/// Written in the same transaction as measurement inserts.
+/// A poller picks up unprocessed events and dispatches them.
+model OutboxEvent {
+  id          String    @id @default(uuid()) @db.Uuid
+  eventType   String    @map("event_type")
+  aggregateId String    @map("aggregate_id") @db.Uuid
+  payload     Json
+  processed   Boolean   @default(false)
+  createdAt   DateTime  @default(now()) @map("created_at")
+  processedAt DateTime? @map("processed_at")
+
+  @@index([processed, createdAt])
+  @@map("outbox_events")
+}

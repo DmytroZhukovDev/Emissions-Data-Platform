@@ -1,0 +1,291 @@
+{
+  "info": {
+    "name": "Emissions Data Platform",
+    "description": "API collection for the Emissions Data Platform — methane ingestion & analytics engine.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    {
+      "key": "baseUrl",
+      "value": "http://localhost:3001",
+      "type": "string"
+    },
+    {
+      "key": "siteId",
+      "value": "",
+      "type": "string"
+    }
+  ],
+  "item": [
+    {
+      "name": "Sites",
+      "item": [
+        {
+          "name": "Create Site",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "const res = pm.response.json();",
+                  "if (res.success && res.data && res.data.id) {",
+                  "    pm.collectionVariables.set('siteId', res.data.id);",
+                  "    pm.test('Site created', () => pm.expect(res.data.name).to.be.a('string'));",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Well Pad Alpha\",\n  \"location\": \"Alberta, Canada\",\n  \"emissionLimit\": 5000,\n  \"metadata\": {\n    \"region\": \"western-canada\",\n    \"operator\": \"Highwood Energy\"\n  }\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/sites",
+              "host": ["{{baseUrl}}"],
+              "path": ["sites"]
+            },
+            "description": "Create a new industrial site. The `siteId` variable is auto-set from the response for use in subsequent requests."
+          }
+        },
+        {
+          "name": "List All Sites",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/sites",
+              "host": ["{{baseUrl}}"],
+              "path": ["sites"]
+            },
+            "description": "Returns all sites ordered by creation date (newest first)."
+          }
+        },
+        {
+          "name": "Get Site by ID",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/sites/{{siteId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["sites", "{{siteId}}"]
+            },
+            "description": "Get a single site. Uses the `siteId` variable set by 'Create Site'."
+          }
+        },
+        {
+          "name": "Get Site Metrics",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/sites/{{siteId}}/metrics",
+              "host": ["{{baseUrl}}"],
+              "path": ["sites", "{{siteId}}", "metrics"]
+            },
+            "description": "Returns compliance status, utilization %, measurement counts, and last ingestion timestamp."
+          }
+        }
+      ]
+    },
+    {
+      "name": "Ingestion",
+      "item": [
+        {
+          "name": "Ingest Batch (First Call)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "const res = pm.response.json();",
+                  "pm.test('Batch ingested, not duplicate', () => {",
+                  "    pm.expect(res.data.duplicate).to.be.false;",
+                  "    pm.expect(res.data.recordCount).to.equal(3);",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "X-Idempotency-Key", "value": "postman-batch-001" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"siteId\": \"{{siteId}}\",\n  \"readings\": [\n    { \"value\": 42.5, \"unit\": \"kg\", \"recordedAt\": \"2026-02-19T10:00:00Z\" },\n    { \"value\": 38.1, \"unit\": \"kg\", \"recordedAt\": \"2026-02-19T10:05:00Z\" },\n    { \"value\": 55.0, \"unit\": \"kg\", \"recordedAt\": \"2026-02-19T10:10:00Z\" }\n  ]\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/ingest",
+              "host": ["{{baseUrl}}"],
+              "path": ["ingest"]
+            },
+            "description": "Ingest 3 readings for the test site. Should return `duplicate: false`."
+          }
+        },
+        {
+          "name": "Ingest Batch (Retry — Same Key)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "const res = pm.response.json();",
+                  "pm.test('Duplicate detected, no double-count', () => {",
+                  "    pm.expect(res.data.duplicate).to.be.true;",
+                  "    pm.expect(res.data.recordCount).to.equal(3);",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "X-Idempotency-Key", "value": "postman-batch-001" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"siteId\": \"{{siteId}}\",\n  \"readings\": [\n    { \"value\": 42.5, \"unit\": \"kg\", \"recordedAt\": \"2026-02-19T10:00:00Z\" },\n    { \"value\": 38.1, \"unit\": \"kg\", \"recordedAt\": \"2026-02-19T10:05:00Z\" },\n    { \"value\": 55.0, \"unit\": \"kg\", \"recordedAt\": \"2026-02-19T10:10:00Z\" }\n  ]\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/ingest",
+              "host": ["{{baseUrl}}"],
+              "path": ["ingest"]
+            },
+            "description": "Exact same request as above with same idempotency key. Should return `duplicate: true` with the cached result. Emissions must NOT be double-counted."
+          }
+        },
+        {
+          "name": "Ingest Batch (New Batch)",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "X-Idempotency-Key", "value": "postman-batch-002" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"siteId\": \"{{siteId}}\",\n  \"readings\": [\n    { \"value\": 100.0, \"unit\": \"kg\", \"recordedAt\": \"2026-02-19T11:00:00Z\" }\n  ]\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/ingest",
+              "host": ["{{baseUrl}}"],
+              "path": ["ingest"]
+            },
+            "description": "A new batch with a different key. Should process normally and add to the running total."
+          }
+        },
+        {
+          "name": "Ingest — Missing Idempotency Key",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Rejected without idempotency key', () => {",
+                  "    pm.expect(pm.response.code).to.equal(400);",
+                  "    pm.expect(pm.response.json().success).to.be.false;",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"siteId\": \"{{siteId}}\",\n  \"readings\": [\n    { \"value\": 10, \"recordedAt\": \"2026-02-19T12:00:00Z\" }\n  ]\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/ingest",
+              "host": ["{{baseUrl}}"],
+              "path": ["ingest"]
+            },
+            "description": "Should fail with 400 because X-Idempotency-Key header is missing."
+          }
+        },
+        {
+          "name": "Ingest — Validation Error",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Validation error returned', () => {",
+                  "    pm.expect(pm.response.code).to.equal(422);",
+                  "    pm.expect(pm.response.json().error.code).to.equal('VALIDATION_ERROR');",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "X-Idempotency-Key", "value": "bad-payload" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"siteId\": \"not-a-uuid\",\n  \"readings\": []\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/ingest",
+              "host": ["{{baseUrl}}"],
+              "path": ["ingest"]
+            },
+            "description": "Should fail with 422 — invalid UUID and empty readings array."
+          }
+        }
+      ]
+    },
+    {
+      "name": "Verification",
+      "item": [
+        {
+          "name": "Verify Metrics After Ingestion",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "const res = pm.response.json();",
+                  "pm.test('Metrics reflect ingested data', () => {",
+                  "    pm.expect(res.data.measurementCount).to.be.above(0);",
+                  "    pm.expect(res.data.batchCount).to.be.above(0);",
+                  "    pm.expect(res.data.totalEmissions).to.be.above(0);",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/sites/{{siteId}}/metrics",
+              "host": ["{{baseUrl}}"],
+              "path": ["sites", "{{siteId}}", "metrics"]
+            },
+            "description": "After running the ingestion requests, verify metrics are updated correctly."
+          }
+        }
+      ]
+    }
+  ]
+}

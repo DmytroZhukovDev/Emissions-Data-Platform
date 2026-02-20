@@ -1,0 +1,46 @@
+{
+  "name": "@emissions/api",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "build": "nest build",
+    "dev": "nest start --watch",
+    "start": "node dist/main",
+    "start:prod": "node dist/main",
+    "prisma": "prisma",
+    "db:migrate": "prisma migrate dev",
+    "db:generate": "prisma generate",
+    "db:seed": "prisma db seed",
+    "db:studio": "prisma studio",
+    "test": "jest --runInBand",
+    "test:e2e": "jest --runInBand --testPathPattern=test/"
+  },
+  "prisma": {
+    "seed": "ts-node prisma/seed.ts"
+  },
+  "dependencies": {
+    "@nestjs/common": "^10",
+    "@nestjs/core": "^10",
+    "@nestjs/platform-express": "^10",
+    "@nestjs/swagger": "^8.1.1",
+    "@prisma/client": "^6",
+    "reflect-metadata": "^0.2",
+    "rxjs": "^7",
+    "zod": "^3"
+  },
+  "devDependencies": {
+    "@nestjs/cli": "^10",
+    "@nestjs/schematics": "^10",
+    "@nestjs/testing": "^10.4.22",
+    "@types/express": "^5",
+    "@types/jest": "^30.0.0",
+    "@types/node": "^22",
+    "@types/supertest": "^6.0.3",
+    "jest": "^30.2.0",
+    "prisma": "^6",
+    "supertest": "^7.2.2",
+    "ts-jest": "^29.4.6",
+    "ts-node": "^10",
+    "typescript": "^5"
+  }
+}

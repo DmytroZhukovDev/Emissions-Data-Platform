@@ -1,0 +1,16 @@
+{
+  "name": "emissions-data-platform",
+  "private": true,
+  "scripts": {
+    "dev": "turbo dev",
+    "build": "turbo build",
+    "lint": "turbo lint",
+    "db:migrate": "pnpm --filter @emissions/api prisma migrate dev",
+    "db:seed": "pnpm --filter @emissions/api prisma db seed",
+    "db:studio": "pnpm --filter @emissions/api prisma studio"
+  },
+  "devDependencies": {
+    "turbo": "^2"
+  },
+  "packageManager": "pnpm@9.15.4"
+}
