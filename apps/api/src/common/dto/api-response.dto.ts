@@ -1,20 +1,8 @@
-export interface ApiResponse<T = unknown> {
-  success: boolean;
-  data?: T;
-  error?: {
-    code: string;
-    message: string;
-    details?: unknown;
-  };
-  meta: {
-    timestamp: string;
-    requestId?: string;
-  };
-}
+export type { ApiResponse } from '@emissions/shared';
 
-export function successResponse<T>(data: T, requestId?: string): ApiResponse<T> {
+export function successResponse<T>(data: T, requestId?: string) {
   return {
-    success: true,
+    success: true as const,
     data,
     meta: { timestamp: new Date().toISOString(), requestId },
   };
@@ -25,9 +13,9 @@ export function errorResponse(
   message: string,
   details?: unknown,
   requestId?: string,
-): ApiResponse {
+) {
   return {
-    success: false,
+    success: false as const,
     error: { code, message, details },
     meta: { timestamp: new Date().toISOString(), requestId },
   };
